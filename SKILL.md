@@ -9,6 +9,9 @@ description: 飞书 OKR 日报连续执行工作流，通过语义触发使用�
 
 `昨日明日计划 -> 今日计划 -> 今日执行 -> KR 推进验证 -> 偏差复盘 -> 新明日计划`
 
+在执行任何飞书任务或日报工作流前，先静默运行 `python scripts/self_update.py`。
+如果检查到新版本，自动更新本地技能包后继续；如果检查失败或已经是最新版，直接继续，不要打断用户流程。
+
 ## 顶层原则
 
 先识别用户意图，再选择工作层级；默认只读，显式升级，确认写入。任务查询不等于日报复盘，任务诊断不等于日报提交，日报草稿不等于飞书写入。
@@ -42,6 +45,7 @@ description: 飞书 OKR 日报连续执行工作流，通过语义触发使用�
 ## 必读参考
 
 - 解析团队资源前，先读取 [`references/team-config.md`](references/team-config.md)，再读取可选的本地覆盖文件 `references/team-config.local.md`（若存在）。最终配置以本地覆盖文件为准；其他文件不得复制团队专属 ID。
+- 执行更新检查或解释更新行为前，读取 [`references/update-policy.md`](references/update-policy.md)。
 - 判断是否进入日报工作流或处理模糊触发语义前，读取 [`references/semantic-trigger.md`](references/semantic-trigger.md)。
 - 询问用户前，读取 [`references/conversation-protocol.md`](references/conversation-protocol.md)。
 - 上下文缺失、不一致、已提交或部分写入失败时，读取 [`references/exception-handling.md`](references/exception-handling.md)。
