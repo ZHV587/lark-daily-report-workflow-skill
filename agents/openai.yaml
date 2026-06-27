@@ -1,4 +1,4 @@
 interface:
   display_name: "飞书 OKR 执行教练"
-  short_description: "先查任务，按需诊断与日报复盘，确认后写入飞书"
-  default_prompt: "使用 $lark-daily-report-workflow 先查看我的今日飞书任务；如果我确认，再进入 OKR 日报复盘。"
+  short_description: "先查任务，按需诊断与日报/周报复盘，确认后写入飞书"
+  default_prompt: "使用 $lark-daily-report-workflow 先查看我的今日飞书任务；如果我确认，再进入 OKR 日报或周报复盘。"
