@@ -2,13 +2,13 @@
 
 ## 工具优先级
 
-操控飞书的能力统一依托 `lark-cli` 与用户手动填写汇报分工完成。`lark-cli` 是读取、任务、Base 和回读校验的主路径；日报/周报正文只生成可复制到飞书汇报表单的手动填写稿，不自动操控飞书界面填写或提交。不得把汇报正文提交误判为 `lark-cli report`、开放 API 直接提交或 Computer Use 自动提交。
+操控飞书的能力统一依托 `lark-cli` 与用户手动填写汇报分工完成。`lark-cli` 是读取、任务、Base 和回读校验的主路径；日报/周报正文只生成可复制到飞书汇报表单的手动填写稿，不自动操控飞书界面填写或提交。不得把汇报正文提交误判为 `lark-cli report`、开放 API 直接提交、Computer Use 自动提交或非公开接口提交。
 
 按以下顺序使用：
 
 1. `lark-cli` 快捷命令：读取 OKR、任务、Base，创建/更新/完成任务，写入复盘 Base。
 2. 已注册的 `lark-cli` 接口：优先用于结构化飞书资源操作。
-3. 通过 `lark-cli api` 调用飞书原生开放接口：用于查询日报/周报规则和历史汇报等未封装读取能力。
+3. 通过 `lark-cli api` 调用飞书原生开放接口：只用于查询日报/周报规则和历史汇报等已公开读取能力。
 4. 用户手动填写飞书日报/周报：AI 提供字段稿、勾选提示和提交前检查清单，用户自行复制、勾选并提交。
 
 认证、身份切换或权限错误按 `lark-shared` 处理。OKR、任务和多维表格操作分别遵循对应飞书技能。
@@ -43,14 +43,45 @@ lark-cli task +get-my-tasks --help
 lark-cli base +record-search --help
 ```
 
-`lark-cli report --help` 当前返回“未知命令 report”的错误，因此不得在 Skill 中假设存在 `lark-cli report`。飞书开放平台“汇报”模块当前用于本工作流的稳定能力是查询规则和查询任务/历史；日报/周报正文默认只交付手动填写稿，由用户在飞书中自行提交。团队配置来自 `references/team-config.md`，不是本文件。
+`lark-cli report --help` 当前返回“未知命令 report”的错误，因此不得在 Skill 中假设存在 `lark-cli report`。飞书开放平台“汇报”模块当前公开能力是查询规则、查询任务/历史和移除规则看板；未发现公开的提交、创建或更新汇报正文接口。日报/周报正文默认只交付手动填写稿，由用户在飞书中自行提交。团队配置来自 `references/team-config.md`，不是本文件。
+
+## 原生汇报 OpenAPI 边界
+
+已核验的飞书原生“汇报”公开接口如下：
+
+- 查询规则：`GET /open-apis/report/v1/rules/query`，权限 `report:rule:readonly`。
+- 查询任务/历史：`POST /open-apis/report/v1/tasks/query`，权限 `report:task:readonly`。
+- 移除规则看板：`POST /open-apis/report/v1/rules/:rule_id/views/remove`，权限 `report:report`；该接口和填写日报无关，默认不得用于日报/周报工作流。
+
+已核验不存在或未公开的提交类文档路径包括：
+
+- `report-v1/task/create.md`
+- `report-v1/task/submit.md`
+- `report-v1/task/update.md`
+- `report-v1/report/create.md`
+- `report-v1/report/submit.md`
+- `report-v1/report/update.md`
+
+调用边界：
+
+- 查询规则和查询任务/历史优先用 `lark-cli api` 原生调用。
+- 这些接口不支持 `--as user` 的用户 access token 路径；实测会返回 `user access token not support`。需要使用应用身份 `--as bot` / tenant token，并在开发者后台开通对应权限。
+- 参数必须按官方文档传入。查询规则必填 `rule_name`；查询任务使用 `POST`，请求体必填 `commit_start_time`、`commit_end_time`、`page_token` 和 `page_size`。
+- 不得猜测未公开提交接口，不得用非公开接口做团队通用能力，不得声称 AI 可以通过 OpenAPI 自动提交日报/周报正文。
+
+示例：
+
+```powershell
+lark-cli api GET /open-apis/report/v1/rules/query --as bot --params '{"rule_name":"工作日报","user_id_type":"open_id"}'
+lark-cli api POST /open-apis/report/v1/tasks/query --as bot --params '{"user_id_type":"open_id"}' --data '{"commit_start_time":1719676800,"commit_end_time":1719763199,"page_token":"","page_size":10}'
+```
 
 ## 日报/周报正文手动填写路径
 
 日报/周报正文必须交付为“手动填写版”，而不是由 AI 自动操控飞书提交。执行顺序：
 
-1. 用 `lark-cli api` 查询日报规则，确认规则名称、规则 ID、字段名称和必选项。
-2. 用 `lark-cli api` 查询当天本人已提交日报，避免重复提交。
+1. 用 `lark-cli api` 查询日报规则，确认规则名称、规则 ID、字段名称和必选项；查询失败时标注权限或配置缺口。
+2. 用 `lark-cli api` 查询当天本人已提交日报，避免重复提交；查询失败时不得阻塞生成手动填写稿，但必须标注无法回读历史。
 3. 输出按飞书日报/周报字段拆分的可复制文本，字段名必须清楚，方便用户逐项粘贴。
 4. 输出“小红书运营必做事项”等选项的勾选提示；选项必须来自运行时读取、界面可见项或用户明确确认，不得凭记忆臆造。
 5. 输出提交前手动检查清单，提醒用户核对字段、必选项、OKR 关联和附件/图片等界面专属内容。
@@ -270,8 +301,8 @@ lark-cli okr +progress-list --help
 - 起草前读取日报规范。
 - 提交前展示完整字段、必选项和手动填写映射。
 - 用户修改后重新检查规范并再次确认。
-- 不自动提交日报/周报正文；用户明确确认后，只能执行任务、Base 等结构化写入。
-- 日报/周报正文固定交付手动填写稿；开放 API 只用于规则/历史查询和用户手动提交后的可选校验。
+- 不自动提交日报/周报正文；用户明确确认后，只能执行 OKR、任务、Base 等结构化写入。
+- 日报/周报正文固定交付手动填写稿；公开开放 API 只用于规则/历史查询和用户手动提交后的可选校验。
 - OKR 进度更新、今日任务勾选完成、明日任务创建或更新、复盘 Base 写入都必须在同一份写入预览中展示；用户明确确认后才能执行。OKR 有实际推进且口径清楚时，OKR 更新是必做项。
 - 不得删除飞书任务。不得将未完成、受阻、顺延或仍需承接的任务勾选完成。
 
